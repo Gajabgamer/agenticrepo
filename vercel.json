@@ -1,0 +1,7 @@
+{
+  "functions": {
+    "src/app/api/github/webhook/route.ts": {
+      "maxDuration": 60
+    }
+  }
+}

@@ -1,0 +1,311 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f7f9ff;
+  --foreground: #07111f;
+  --muted: #475569;
+  --panel: rgba(255, 255, 255, 0.86);
+  --panel-strong: rgba(255, 255, 255, 0.94);
+  --panel-soft: rgba(15, 23, 42, 0.055);
+  --border: rgba(15, 23, 42, 0.16);
+  --terminal: #0b1220;
+  --terminal-border: rgba(15, 23, 42, 0.18);
+  --blue: #1d4ed8;
+  --blue-soft: rgba(29, 78, 216, 0.11);
+  --sky-readable: #0369a1;
+  --green-readable: #047857;
+  --amber-readable: #b45309;
+  --red-readable: #dc2626;
+  --violet-readable: #6d28d9;
+  --glow: rgba(37, 99, 235, 0.18);
+  --hero-bg:
+    radial-gradient(circle at 18% 20%, rgba(37, 99, 235, 0.14), transparent 28%),
+    radial-gradient(circle at 85% 5%, rgba(14, 165, 233, 0.12), transparent 26%),
+    linear-gradient(135deg, #f8fbff 0%, #eef4ff 48%, #f4f7fb 100%);
+}
+
+.dark {
+  --background: #05070b;
+  --foreground: #eef5ff;
+  --muted: #94a3b8;
+  --panel: rgba(8, 13, 25, 0.72);
+  --panel-strong: rgba(7, 12, 24, 0.94);
+  --panel-soft: rgba(255, 255, 255, 0.04);
+  --border: rgba(148, 163, 184, 0.16);
+  --terminal: #05080d;
+  --terminal-border: rgba(148, 163, 184, 0.16);
+  --blue: #2f6dff;
+  --blue-soft: rgba(47, 109, 255, 0.12);
+  --sky-readable: #7dd3fc;
+  --green-readable: #6ee7b7;
+  --amber-readable: #fcd34d;
+  --red-readable: #fca5a5;
+  --violet-readable: #c4b5fd;
+  --glow: rgba(47, 109, 255, 0.32);
+  --hero-bg:
+    radial-gradient(circle at 18% 20%, rgba(47, 109, 255, 0.2), transparent 28%),
+    radial-gradient(circle at 82% 4%, rgba(124, 58, 237, 0.16), transparent 26%),
+    linear-gradient(135deg, #05070b 0%, #07111f 48%, #020617 100%);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: "Aptos", "Segoe UI Variable", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Cascadia Code", "JetBrains Mono", "SFMono-Regular", Consolas, ui-monospace, monospace;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  text-rendering: geometricPrecision;
+}
+
+body::before {
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  content: "";
+  background:
+    linear-gradient(var(--border) 1px, transparent 1px),
+    linear-gradient(90deg, var(--border) 1px, transparent 1px);
+  background-size: 96px 96px;
+  mask-image: radial-gradient(circle at 50% 10%, black, transparent 68%);
+  opacity: 0.18;
+}
+
+.app-shell {
+  background: var(--hero-bg);
+  color: var(--foreground);
+}
+
+.agent-panel {
+  border: 1px solid var(--border);
+  background: var(--panel);
+  box-shadow: 0 24px 80px rgba(2, 6, 23, 0.16);
+  backdrop-filter: blur(18px);
+}
+
+.agent-panel-strong {
+  border: 1px solid var(--border);
+  background: var(--panel-strong);
+  box-shadow: 0 24px 80px rgba(2, 6, 23, 0.18);
+  backdrop-filter: blur(20px);
+}
+
+.agent-soft {
+  border: 1px solid var(--border);
+  background: var(--panel-soft);
+}
+
+.agent-muted {
+  color: var(--muted);
+}
+
+.agent-blue {
+  color: var(--blue);
+}
+
+.text-signal-sky {
+  color: var(--sky-readable);
+}
+
+.text-signal-green {
+  color: var(--green-readable);
+}
+
+.text-signal-amber {
+  color: var(--amber-readable);
+}
+
+.text-signal-red {
+  color: var(--red-readable);
+}
+
+.text-signal-violet {
+  color: var(--violet-readable);
+}
+
+.agent-terminal {
+  border: 1px solid var(--terminal-border);
+  background: var(--terminal);
+}
+
+.signal-grid {
+  background-image:
+    linear-gradient(90deg, rgba(59, 130, 246, 0.08) 1px, transparent 1px),
+    linear-gradient(rgba(59, 130, 246, 0.08) 1px, transparent 1px);
+  background-size: 42px 42px;
+}
+
+.workflow-line {
+  position: relative;
+  overflow: hidden;
+}
+
+.workflow-line::after {
+  position: absolute;
+  inset: 0;
+  content: "";
+  background: linear-gradient(90deg, transparent, rgba(96, 165, 250, 0.9), transparent);
+  animation: signalFlow 2.6s ease-in-out infinite;
+}
+
+.pulse-orb {
+  animation: pulseOrb 3.2s ease-in-out infinite;
+}
+
+.float-panel {
+  animation: agentFloat 8s ease-in-out infinite;
+}
+
+:root:not(.dark) .app-shell [class*="text-white"],
+:root:not(.dark) .app-shell [class*="text-slate-100"],
+:root:not(.dark) .app-shell [class*="text-slate-200"],
+:root:not(.dark) .app-shell [class*="text-slate-300"] {
+  color: var(--foreground) !important;
+}
+
+:root:not(.dark) .app-shell [class*="text-slate-400"],
+:root:not(.dark) .app-shell [class*="text-slate-500"],
+:root:not(.dark) .app-shell [class*="text-slate-600"] {
+  color: var(--muted) !important;
+}
+
+:root:not(.dark) .app-shell [class*="text-sky-200"],
+:root:not(.dark) .app-shell [class*="text-sky-300"],
+:root:not(.dark) .app-shell [class*="text-sky-400"] {
+  color: var(--sky-readable) !important;
+}
+
+:root:not(.dark) .app-shell [class*="text-emerald-100"],
+:root:not(.dark) .app-shell [class*="text-emerald-200"],
+:root:not(.dark) .app-shell [class*="text-emerald-300"],
+:root:not(.dark) .app-shell [class*="text-emerald-400"] {
+  color: var(--green-readable) !important;
+}
+
+:root:not(.dark) .app-shell [class*="text-amber-200"],
+:root:not(.dark) .app-shell [class*="text-amber-300"],
+:root:not(.dark) .app-shell [class*="text-amber-400"] {
+  color: var(--amber-readable) !important;
+}
+
+:root:not(.dark) .app-shell [class*="text-red-200"],
+:root:not(.dark) .app-shell [class*="text-red-300"],
+:root:not(.dark) .app-shell [class*="text-red-400"] {
+  color: var(--red-readable) !important;
+}
+
+:root:not(.dark) .app-shell [class*="text-violet-300"],
+:root:not(.dark) .app-shell [class*="text-violet-400"] {
+  color: var(--violet-readable) !important;
+}
+
+:root:not(.dark) .app-shell [class*="bg-slate-950"],
+:root:not(.dark) .app-shell [class*="bg-slate-900"],
+:root:not(.dark) .app-shell [class*="bg-[#05080d]"] {
+  background: #ffffff !important;
+}
+
+:root:not(.dark) .app-shell .agent-terminal,
+:root:not(.dark) .app-shell .agent-terminal [class*="bg-slate-950"],
+:root:not(.dark) .app-shell .agent-terminal [class*="bg-slate-900"] {
+  background: var(--terminal) !important;
+}
+
+:root:not(.dark) .app-shell .agent-terminal [class*="text-slate-300"],
+:root:not(.dark) .app-shell .agent-terminal [class*="text-slate-400"] {
+  color: #cbd5e1 !important;
+}
+
+:root:not(.dark) .app-shell [class*="border-white/10"],
+:root:not(.dark) .app-shell [class*="border-slate-800"] {
+  border-color: var(--border) !important;
+}
+
+:root:not(.dark) .app-shell [class*="bg-white/[0.03]"],
+:root:not(.dark) .app-shell [class*="bg-white/[0.035]"],
+:root:not(.dark) .app-shell [class*="bg-white/[0.04]"],
+:root:not(.dark) .app-shell [class*="bg-white/[0.055]"] {
+  background: var(--panel-soft) !important;
+}
+
+:root:not(.dark) .app-shell input,
+:root:not(.dark) .app-shell select,
+:root:not(.dark) .app-shell textarea {
+  border-color: var(--border) !important;
+  background: #ffffff !important;
+  color: var(--foreground) !important;
+}
+
+:root:not(.dark) .app-shell input::placeholder,
+:root:not(.dark) .app-shell textarea::placeholder {
+  color: #94a3b8 !important;
+}
+
+::selection {
+  background: rgba(125, 211, 252, 0.28);
+  color: #ffffff;
+}
+
+@keyframes agentScan {
+  0% {
+    transform: translateX(-120%);
+  }
+
+  50% {
+    transform: translateX(45%);
+  }
+
+  100% {
+    transform: translateX(220%);
+  }
+}
+
+@keyframes agentFloat {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes signalFlow {
+  0% {
+    transform: translateX(-100%);
+  }
+
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes pulseOrb {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.72;
+  }
+
+  50% {
+    transform: scale(1.08);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}

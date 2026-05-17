@@ -1,0 +1,52 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model GithubEvent {
+  id        String   @id @default(cuid())
+  eventType String
+  createdAt DateTime @default(now())
+}
+
+model PullRequestAnalysis {
+  id         String   @id @default(cuid())
+  prNumber   Int
+  repository String
+  riskScore  Int
+  summary    String
+  createdAt  DateTime @default(now())
+}
+
+model User {
+  id                    String                @id @default(cuid())
+  githubId              String                @unique
+  githubUsername        String
+  githubAccessToken     String
+  avatarUrl             String?
+  bobApiKey             String?
+  githubWebhookSecret   String?
+  autoFixEnabled        Boolean               @default(false)
+  confidenceThreshold   Int                   @default(80)
+  connectedRepository   ConnectedRepository?
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+}
+
+model ConnectedRepository {
+  id            String   @id @default(cuid())
+  userId        String   @unique
+  repoName      String
+  owner         String
+  cloneUrl      String
+  defaultBranch String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
