@@ -7,6 +7,8 @@ import { pushFixBranch } from './pushFixBranch';
 import { createPullRequest } from './createPullRequest';
 import { generateFixPatch } from './generateFixPatch';
 import { generateCodeFix } from '@/lib/ai/generateCodeFix';
+import { logActivityEvent } from '@/lib/activity/logActivityEvent';
+import { incidentKey, upsertIncident } from '@/lib/incidents/incidentManager';
 import { SuspiciousCommit } from './correlateRecentCommits';
 import { RegressionRiskResult } from './calculateRegressionRisk';
 import { tmpdir } from 'os';
@@ -65,6 +67,31 @@ export async function runAutoFixWorkflow(
   try {
     // Step 1: Clone repository
     console.log('[AutoFix] Step 1: Cloning repository...');
+    await logActivityEvent({
+      eventType: 'autofix_execution',
+      repository: `${repositoryOwner}/${repositoryName}`,
+      severity: 'info',
+      status: 'started',
+      summary: 'Auto-fix workflow started',
+      details: {
+        baseBranch,
+        detectedFiles,
+        riskScore: input.regressionRisk.regressionRiskScore,
+      },
+    });
+    await upsertIncident({
+      incidentKey: incidentKey(['autofix', repositoryOwner, repositoryName, baseBranch, Date.now()]),
+      severity: 'MEDIUM',
+      repository: `${repositoryOwner}/${repositoryName}`,
+      affectedBranch: baseBranch,
+      affectedFiles: detectedFiles,
+      engineeringSummary: input.engineeringSummary || 'Auto-fix workflow started from regression analysis.',
+      status: 'AUTOFIX_RUNNING',
+      historySummary: 'Auto-fix workflow started',
+      historyDetails: {
+        detectedErrors: detectedErrors.slice(0, 5),
+      },
+    });
     localPath = join(tmpdir(), `autofix-${Date.now()}`);
     const cloneResult = await cloneRepository(repositoryCloneUrl, localPath);
     
@@ -151,6 +178,17 @@ export async function runAutoFixWorkflow(
       };
     }
     console.log(`[AutoFix] Commit created: ${commitResult.commitSha}`);
+    await logActivityEvent({
+      eventType: 'successful_fix',
+      repository: `${repositoryOwner}/${repositoryName}`,
+      severity: 'success',
+      status: 'completed',
+      summary: `Deterministic safe fix committed: ${commitResult.commitSha}`,
+      details: {
+        branchName,
+        updatedFiles: codeFixResult.updatedFiles.map((file) => file.path),
+      },
+    });
 
     // Step 8: Push branch
     console.log('[AutoFix] Step 8: Pushing branch to origin...');
@@ -191,6 +229,17 @@ export async function runAutoFixWorkflow(
     }
 
     console.error(`[AutoFix] Workflow failed: ${errorMessage}`);
+    await logActivityEvent({
+      eventType: 'autofix_execution',
+      repository: `${input.repositoryOwner}/${input.repositoryName}`,
+      severity: 'danger',
+      status: 'failed',
+      summary: errorMessage,
+      details: {
+        branchName,
+        branchPushed,
+      },
+    });
     await rollbackAutoFixWorkflow(localPath, branchName, branchPushed);
 
     return {

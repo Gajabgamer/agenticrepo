@@ -1,4 +1,5 @@
 import { auth } from '../../../../../auth';
+import { logActivityEvent } from '@/lib/activity/logActivityEvent';
 import { getPrisma } from '@/lib/database/prisma';
 
 export const runtime = 'nodejs';
@@ -35,6 +36,18 @@ export async function POST(request: Request) {
       owner: body.owner,
       cloneUrl: body.cloneUrl,
       defaultBranch: body.defaultBranch,
+    },
+  });
+
+  await logActivityEvent({
+    eventType: 'repository_investigation',
+    repository: `${repository.owner}/${repository.repoName}`,
+    severity: 'success',
+    status: 'completed',
+    summary: `Repository connected on ${repository.defaultBranch}`,
+    details: {
+      cloneUrl: repository.cloneUrl,
+      defaultBranch: repository.defaultBranch,
     },
   });
 

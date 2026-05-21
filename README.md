@@ -1,192 +1,131 @@
-# GitHub Engineering Agent
+# AgenticRepo
 
-A Next.js 15 backend-oriented application for GitHub automation, analysis, and webhook processing.
+Autonomous GitHub-native engineering agent for repository intelligence, workflow monitoring, regression investigation, and safe automated fix pull requests.
 
-## 🚀 Features
+AgenticRepo connects to a GitHub repository, listens to engineering signals, builds operational memory, investigates CI/CD failures, and helps teams understand what changed, why it matters, and what can be safely fixed.
 
-- **GitHub Integration**: Full GitHub API integration with webhook support
-- **AI Analysis**: Code review, security scanning, and performance analysis
-- **Webhook Processing**: Handle GitHub events in real-time
-- **Database Layer**: Persistent storage for events and analysis
-- **Scalable Architecture**: Clean separation of concerns with modular design
+## What It Does
 
-## 📁 Project Structure
+- Monitors GitHub webhook events for pull requests, workflow runs, and issue comments.
+- Analyzes failed workflows and parses CI/CD failure signals.
+- Correlates suspicious commits with affected files and modules.
+- Tracks incidents, repository health, workflow recovery, and investigation history.
+- Builds lightweight engineering memory and optimized AI context without vector database overhead.
+- Supports IBM Bob and Groq provider configuration.
+- Runs controlled terminal commands for repository operations without exposing raw shell access.
+- Generates deterministic safe fixes only for narrow, reviewable changes.
 
-```
-github-agent/
-├── src/
-│   ├── app/                    # Next.js App Router
-│   │   ├── api/               # API routes
-│   │   │   └── health/        # Health check endpoint
-│   │   ├── layout.tsx         # Root layout
-│   │   └── page.tsx           # Homepage
-│   ├── lib/                   # Core business logic
-│   │   ├── ai/               # AI analysis services
-│   │   │   └── analyzer.ts   # AI analyzer implementation
-│   │   ├── database/         # Database layer
-│   │   │   └── client.ts     # Database client
-│   │   ├── github/           # GitHub integrations
-│   │   │   └── client.ts     # GitHub API client
-│   │   ├── services/         # Service orchestration
-│   │   │   └── orchestrator.ts
-│   │   ├── utils/            # Utility functions
-│   │   │   └── index.ts
-│   │   └── webhooks/         # Webhook handlers
-│   │       └── handler.ts
-│   ├── types/                # TypeScript type definitions
-│   │   └── index.ts
-│   └── config/               # Configuration
-│       └── index.ts
-├── public/                   # Static assets
-├── .env.local               # Environment variables (local)
-├── .env.example             # Environment variables template
-├── next.config.ts           # Next.js configuration
-├── tsconfig.json            # TypeScript configuration
-├── tailwind.config.ts       # Tailwind CSS configuration
-└── package.json             # Dependencies
+## Tech Stack
 
-```
+- Next.js App Router
+- TypeScript
+- React
+- Tailwind CSS
+- Prisma ORM
+- Turso/libSQL
+- Auth.js / NextAuth
+- GitHub OAuth and GitHub App webhooks
+- xterm.js for the controlled engineering console
 
-## 🛠️ Setup Commands
+## Core Workflows
 
-### 1. Install Dependencies
+1. Sign in with GitHub.
+2. Connect one repository.
+3. Configure IBM Bob or Groq.
+4. Configure the GitHub webhook secret.
+5. Monitor workflow and pull request activity.
+6. Investigate failures and regressions.
+7. Review operational memory, incident history, and repository health.
+8. Generate safe, reviewable fix pull requests when eligible.
+
+## Local Setup
 
 ```bash
-cd github-agent
 npm install
-```
-
-### 2. Configure Environment Variables
-
-Copy the example environment file:
-
-```bash
 cp .env.example .env.local
-```
-
-Edit `.env.local` with your credentials:
-
-```env
-# GitHub Configuration
-GITHUB_TOKEN=your_github_personal_access_token
-GITHUB_WEBHOOK_SECRET=your_webhook_secret
-
-# Database Configuration
-DATABASE_URL=postgresql://user:password@localhost:5432/github_agent
-
-# AI Configuration
-OPENAI_API_KEY=your_openai_api_key
-ANTHROPIC_API_KEY=your_anthropic_api_key
-
-# Application Configuration
-NODE_ENV=development
-NEXT_PUBLIC_APP_URL=http://localhost:3000
-```
-
-### 3. Run Development Server
-
-```bash
+npm run db:push
 npm run dev
 ```
 
-The application will be available at `http://localhost:3000`
+Open `http://localhost:3000`.
 
-### 4. Build for Production
+## Required Environment Variables
+
+```env
+NEXTAUTH_URL=http://localhost:3000
+NEXTAUTH_SECRET=
+
+GITHUB_CLIENT_ID=
+GITHUB_CLIENT_SECRET=
+GITHUB_APP_ID=
+GITHUB_PRIVATE_KEY=
+GITHUB_WEBHOOK_SECRET=
+GITHUB_TOKEN=
+
+DATABASE_URL=libsql://your-database.turso.io
+TURSO_AUTH_TOKEN=
+
+BOB_API_KEY=
+GROQ_API_KEY=
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+```
+
+Do not commit real secrets. Use `.env.local` locally and Vercel environment variables in production.
+
+## Useful Commands
 
 ```bash
+npm run dev
 npm run build
-npm start
+npm run lint
+npm run test:workflow
+npm run db:migrate:deploy
 ```
 
-## 📡 API Endpoints
+## Controlled Terminal Commands
 
-### Health Check
+The in-app terminal does not execute arbitrary operating system commands. It routes only approved AgenticRepo operations, including:
 
-```
-GET /api/health
-```
-
-Returns the health status of the application.
-
-**Response:**
-```json
-{
-  "status": "healthy",
-  "timestamp": "2026-05-17T08:00:00.000Z",
-  "service": "GitHub Engineering Agent",
-  "version": "1.0.0"
-}
-```
-
-## 🏗️ Architecture
-
-### Layers
-
-1. **API Layer** (`src/app/api/`): Next.js API routes for HTTP endpoints
-2. **Service Layer** (`src/lib/services/`): Business logic orchestration
-3. **Integration Layer** (`src/lib/github/`, `src/lib/ai/`): External service integrations
-4. **Data Layer** (`src/lib/database/`): Database operations
-5. **Webhook Layer** (`src/lib/webhooks/`): GitHub webhook processing
-
-### Import Aliases
-
-The project uses TypeScript path aliases for clean imports:
-
-```typescript
-import { githubClient } from '@/lib/github/client';
-import { ServiceResponse } from '@/types';
-import config from '@/config';
+```text
+analyze-repo
+generate-docs
+scan-regressions
+investigate-failure
+run-autofix
+memory-status
+optimize-context
+show-agents
+coordination-status
+recover-workflow
+repo-map
+review-pr <id>
 ```
 
-## 🔧 Development
+## Deployment Notes
 
-### Adding New Services
+AgenticRepo is designed for Vercel serverless deployment with Turso/libSQL. API routes that use GitHub, Prisma, or webhook verification run in the Node.js runtime.
 
-1. Create service file in appropriate `src/lib/` subdirectory
-2. Export service instance
-3. Import and use in orchestrator or API routes
+Production callback and webhook URLs normally look like:
 
-### Adding New API Routes
-
-1. Create route file in `src/app/api/[route-name]/route.ts`
-2. Export HTTP method handlers (GET, POST, etc.)
-3. Use service layer for business logic
-
-### Type Safety
-
-All types are defined in `src/types/index.ts`. Import and use throughout the application for full TypeScript support.
-
-## 📦 Key Dependencies
-
-- **Next.js 15**: React framework with App Router
-- **TypeScript**: Type safety
-- **TailwindCSS**: Utility-first CSS
-- **ESLint**: Code linting
-
-## 🚦 Scripts
-
-```bash
-npm run dev          # Start development server
-npm run build        # Build for production
-npm start            # Start production server
-npm run lint         # Run ESLint
+```text
+https://your-domain.vercel.app/api/auth/callback/github
+https://your-domain.vercel.app/api/github/webhook
 ```
 
-## 🔐 Security
+## Security Model
 
-- Store sensitive credentials in `.env.local` (never commit)
-- Use webhook signature verification for GitHub webhooks
-- Implement rate limiting for API endpoints
-- Validate all incoming data
+- Webhook signatures are verified with the configured GitHub webhook secret.
+- GitHub and AI provider tokens stay server-side.
+- The terminal is command-routed and does not expose raw shell access.
+- Auto-fix behavior is intentionally constrained to deterministic safe edits.
+- Repository actions should produce pull requests for review rather than silent direct changes.
 
-## 📝 License
+## Project Status
 
-MIT
+AgenticRepo is an active autonomous engineering platform prototype focused on operational credibility, repository intelligence, and safe automation.
 
-## 🤝 Contributing
+See [ROADMAP.md](./ROADMAP.md) for planned work and [SECURITY.md](./SECURITY.md) for vulnerability reporting.
 
-1. Fork the repository
-2. Create a feature branch
-3. Commit your changes
-4. Push to the branch
-5. Open a Pull Request
+## License
+
+MIT. See [LICENSE](./LICENSE).

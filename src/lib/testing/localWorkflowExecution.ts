@@ -1,11 +1,15 @@
 import { generateCodeFix } from '@/lib/ai/generateCodeFix';
 import { generateEngineeringSummary } from '@/lib/ai/generateEngineeringSummary';
+import { runAgentCoordination } from '@/lib/agents/coordinationEngine';
 import { analyzeWorkflowFailure } from '@/lib/github/analyzeWorkflowFailure';
 import { calculateRegressionRisk } from '@/lib/github/calculateRegressionRisk';
 import { SuspiciousCommit } from '@/lib/github/correlateRecentCommits';
 import { generateFixPatch } from '@/lib/github/generateFixPatch';
 import { isSafeAutoFix } from '@/lib/github/isSafeAutoFix';
 import { parseWorkflowLogs } from '@/lib/github/parseWorkflowLogs';
+import { incidentKey, severityFromScore, upsertIncident } from '@/lib/incidents/incidentManager';
+import { runAutonomousInvestigation } from '@/lib/investigations/investigationEngine';
+import { runWorkflowRecovery } from '@/lib/recovery/workflowRecoveryEngine';
 import { GitHubWebhookPayload } from '@/types';
 import { StructuredWorkflowLogger } from './structuredLogger';
 import { createLocalWebhookFixtures, simulateWebhook } from './webhookSimulator';
@@ -136,6 +140,12 @@ export async function runLocalWorkflowSimulation(): Promise<LocalWorkflowSimulat
   logger.log('ci_failure', 'success', failureAnalysis.summary, {
     severityScore: failureAnalysis.severityScore,
   });
+  await runAutonomousInvestigation({
+    repository: workflowPayload.repository.full_name,
+    branch: workflowPayload.workflow_run?.head_branch,
+    triggerType: 'workflow_failure',
+    relatedWorkflow: workflowPayload.workflow_run?.name,
+  });
 
   logger.log('log_parsing', 'start', 'Parsing local CI failure logs');
   const parsedLogs = parseWorkflowLogs(rawFailureLogs);
@@ -163,6 +173,52 @@ export async function runLocalWorkflowSimulation(): Promise<LocalWorkflowSimulat
     regressionRiskScore: regressionRisk.regressionRiskScore,
     confidenceLevel: regressionRisk.confidenceLevel,
   });
+  await upsertIncident({
+    incidentKey: incidentKey(['local-simulation', workflowPayload.repository.full_name, workflowPayload.workflow_run?.id]),
+    severity: severityFromScore(regressionRisk.regressionRiskScore),
+    repository: workflowPayload.repository.full_name,
+    affectedBranch: workflowPayload.workflow_run?.head_branch,
+    affectedFiles: parsedLogs.files,
+    engineeringSummary: `Local workflow simulation detected regression risk ${regressionRisk.regressionRiskScore}/100`,
+    status: 'ANALYZING',
+    relatedWorkflow: workflowPayload.workflow_run?.name,
+    historySummary: 'Local end-to-end workflow simulation opened incident',
+    historyDetails: {
+      suspiciousCommits: suspiciousCommits.map((commit) => commit.sha),
+      confidenceLevel: regressionRisk.confidenceLevel,
+    },
+  });
+
+  logger.log('workflow_recovery', 'start', 'Evaluating autonomous recovery strategy');
+  const recovery = await runWorkflowRecovery({
+    repository: workflowPayload.repository.full_name,
+    workflowName: workflowPayload.workflow_run?.name,
+    branch: workflowPayload.workflow_run?.head_branch,
+    runId: workflowPayload.workflow_run?.id,
+    failureAnalysis,
+    logAnalysis: parsedLogs,
+    suspiciousCommits,
+    regressionRisk,
+    executeAutoFix: false,
+  });
+  logger.log('workflow_recovery', 'success', 'Recovery strategy evaluated', {
+    strategy: recovery.strategy,
+    status: recovery.status,
+    stabilizationProbability: recovery.stabilizationProbability,
+  });
+
+  logger.log('agent_coordination', 'start', 'Coordinating specialized engineering agents');
+  const coordination = await runAgentCoordination({
+    repository: workflowPayload.repository.full_name,
+    triggerType: 'workflow_failure',
+    workflowName: workflowPayload.workflow_run?.name,
+    priority: regressionRisk.regressionRiskScore >= 80 ? 'CRITICAL' : regressionRisk.regressionRiskScore >= 60 ? 'HIGH' : 'MEDIUM',
+  });
+  logger.log('agent_coordination', 'success', 'Multi-agent coordination completed', {
+    status: coordination.status,
+    taskCount: coordination.tasks.length,
+    findingCount: coordination.findings.length,
+  });
 
   const engineeringSummaryResult = generateEngineeringSummary({
     workflowAnalysis: failureAnalysis,
@@ -177,6 +233,20 @@ export async function runLocalWorkflowSimulation(): Promise<LocalWorkflowSimulat
     'Potential Regression Detected in Deploy and Test'
   );
   logger.log('issue_creation', 'success', 'Mock issue created', issue);
+  await upsertIncident({
+    incidentKey: incidentKey(['local-simulation', workflowPayload.repository.full_name, workflowPayload.workflow_run?.id]),
+    severity: severityFromScore(regressionRisk.regressionRiskScore),
+    repository: workflowPayload.repository.full_name,
+    affectedBranch: workflowPayload.workflow_run?.head_branch,
+    affectedFiles: parsedLogs.files,
+    engineeringSummary: engineeringSummaryResult.summary,
+    status: 'OPEN',
+    relatedWorkflow: workflowPayload.workflow_run?.name,
+    relatedIssue: issue.issueNumber,
+    relatedUrl: issue.issueUrl,
+    historySummary: 'Local simulation issue created for incident',
+    historyDetails: issue,
+  });
 
   logger.log('auto_fix_eligibility', 'start', 'Checking auto-fix safety rules');
   const autoFixEligibility = isSafeAutoFix({
@@ -203,6 +273,23 @@ export async function runLocalWorkflowSimulation(): Promise<LocalWorkflowSimulat
     branchName: autoFixResult.branchName,
     pullRequestTitle: autoFixResult.pullRequestTitle,
     updatedFiles: autoFixResult.updatedFiles.map((file) => file.path),
+  });
+  await upsertIncident({
+    incidentKey: incidentKey(['local-simulation', workflowPayload.repository.full_name, workflowPayload.workflow_run?.id]),
+    severity: severityFromScore(regressionRisk.regressionRiskScore),
+    repository: workflowPayload.repository.full_name,
+    affectedBranch: workflowPayload.workflow_run?.head_branch,
+    affectedFiles: parsedLogs.files,
+    engineeringSummary: engineeringSummaryResult.summary,
+    status: 'RESOLVED',
+    relatedWorkflow: workflowPayload.workflow_run?.name,
+    relatedIssue: issue.issueNumber,
+    relatedUrl: issue.issueUrl,
+    historySummary: 'Local auto-fix simulation completed and incident resolved',
+    historyDetails: {
+      branchName: autoFixResult.branchName,
+      updatedFiles: autoFixResult.updatedFiles.map((file) => file.path),
+    },
   });
 
   logger.log('simulation', 'success', 'Local end-to-end workflow execution test completed');

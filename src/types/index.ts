@@ -26,9 +26,25 @@ export interface GitHubWebhookPayload {
   pull_request?: {
     number?: number;
     title?: string;
+    html_url?: string;
     changed_files?: number;
-    files?: Array<{ filename?: string }>;
+    additions?: number;
+    deletions?: number;
+    user?: {
+      login?: string;
+    };
+    files?: Array<{
+      filename?: string;
+      status?: string;
+      additions?: number;
+      deletions?: number;
+      changes?: number;
+      patch?: string;
+    }>;
     head?: {
+      ref?: string;
+    };
+    base?: {
       ref?: string;
     };
   };

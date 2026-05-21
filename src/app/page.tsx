@@ -14,7 +14,7 @@ const features = [
 const storySteps = [
   ['01', 'Listen', 'GitHub webhooks stream pull requests, issue comments, and workflow failures.'],
   ['02', 'Reason', 'The agent parses logs, maps modules, and connects failures to suspicious commits.'],
-  ['03', 'Act', 'Bob generates concise summaries, docs, and deterministic safe fixes.'],
+  ['03', 'Act', 'Bob or Groq generates concise summaries, docs, and deterministic safe fixes.'],
   ['04', 'Ship', 'The platform creates issues and pull requests for engineer review.'],
 ] as const;
 

@@ -2,22 +2,27 @@
 
 import { useEffect, useState } from 'react';
 
+function getInitialTheme(): 'dark' | 'light' {
+  if (typeof window === 'undefined') {
+    return 'dark';
+  }
+
+  const storedTheme = window.localStorage.getItem('agentic-theme');
+
+  if (storedTheme === 'light' || storedTheme === 'dark') {
+    return storedTheme;
+  }
+
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+}
+
 // made by bob
 export function ThemeToggle() {
-  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+  const [theme, setTheme] = useState<'dark' | 'light'>(getInitialTheme);
 
   useEffect(() => {
-    const storedTheme = window.localStorage.getItem('agentic-theme');
-    const preferredTheme =
-      storedTheme === 'light' || storedTheme === 'dark'
-        ? storedTheme
-        : window.matchMedia('(prefers-color-scheme: dark)').matches
-          ? 'dark'
-          : 'light';
-
-    setTheme(preferredTheme);
-    document.documentElement.classList.toggle('dark', preferredTheme === 'dark');
-  }, []);
+    document.documentElement.classList.toggle('dark', theme === 'dark');
+  }, [theme]);
 
   function toggleTheme() {
     const nextTheme = theme === 'dark' ? 'light' : 'dark';

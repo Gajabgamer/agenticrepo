@@ -15,6 +15,357 @@ model GithubEvent {
   createdAt DateTime @default(now())
 }
 
+model ActivityEvent {
+  id              String   @id @default(cuid())
+  eventType       String
+  repository      String
+  severity        String
+  status          String
+  summary         String
+  details         String?
+  relatedWorkflow String?
+  relatedPr       Int?
+  relatedIssue    Int?
+  relatedUrl      String?
+  createdAt       DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([repository])
+}
+
+model Incident {
+  id                 String            @id @default(cuid())
+  incidentKey        String            @unique
+  severity           String
+  repository         String
+  affectedBranch     String?
+  affectedFiles      String?
+  engineeringSummary String
+  status             String            @default("OPEN")
+  relatedWorkflow    String?
+  relatedPr          Int?
+  relatedIssue       Int?
+  relatedUrl         String?
+  openedAt           DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+  resolvedAt         DateTime?
+  history            IncidentHistory[]
+
+  @@index([repository])
+  @@index([status])
+  @@index([openedAt])
+}
+
+model IncidentHistory {
+  id         String   @id @default(cuid())
+  incidentId String
+  status     String
+  summary    String
+  details    String?
+  createdAt  DateTime @default(now())
+  incident   Incident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+
+  @@index([incidentId])
+  @@index([createdAt])
+}
+
+model RepositoryHealthSnapshot {
+  id                  String   @id @default(cuid())
+  repository          String
+  healthScore         Int
+  status              String
+  workflowFailures    Int
+  regressionIncidents Int
+  failedPullRequests  Int
+  suspiciousCommits   Int
+  unresolvedIssues    Int
+  autoFixSuccesses    Int
+  autoFixFailures     Int
+  workflowReliability Int
+  autoFixSuccessRate  Int
+  stabilityTrend      String
+  createdAt           DateTime @default(now())
+
+  @@index([repository])
+  @@index([createdAt])
+}
+
+model Investigation {
+  id                 String              @id @default(cuid())
+  investigationKey   String              @unique
+  repository         String
+  triggerType        String
+  status             String              @default("RUNNING")
+  currentStage       String?
+  severity           String              @default("MEDIUM")
+  confidenceLevel    String?
+  rootCause          String?
+  affectedFiles      String?
+  suspiciousCommits  String?
+  conclusion         String?
+  recommendedActions String?
+  linkedIncidentId   String?
+  relatedWorkflow    String?
+  relatedPr          Int?
+  startedAt          DateTime            @default(now())
+  completedAt        DateTime?
+  updatedAt          DateTime            @updatedAt
+  steps              InvestigationStep[]
+
+  @@index([repository])
+  @@index([status])
+  @@index([startedAt])
+}
+
+model InvestigationStep {
+  id              String        @id @default(cuid())
+  investigationId String
+  stage           String
+  status          String
+  summary         String
+  evidence        String?
+  startedAt       DateTime      @default(now())
+  completedAt     DateTime?
+  investigation   Investigation @relation(fields: [investigationId], references: [id], onDelete: Cascade)
+
+  @@index([investigationId])
+  @@index([startedAt])
+}
+
+model PullRequestReview {
+  id                  String                  @id @default(cuid())
+  reviewKey           String                  @unique
+  prNumber            Int
+  repository          String
+  title               String?
+  author              String?
+  branch              String?
+  status              String                  @default("COMPLETED")
+  riskClassification  String
+  riskScore           Int
+  confidenceScore     Int
+  changedFiles        String?
+  changedModules      String?
+  architectureImpact  String
+  workflowImpact      String
+  affectedDependencies String?
+  suspiciousPatterns  String?
+  reasoning           String
+  recommendations     String?
+  deploymentConcerns  String?
+  inlineInsights      String?
+  relatedUrl          String?
+  startedAt           DateTime                @default(now())
+  completedAt         DateTime?
+  updatedAt           DateTime                @updatedAt
+  steps               PullRequestReviewStep[]
+
+  @@index([repository])
+  @@index([prNumber])
+  @@index([startedAt])
+}
+
+model PullRequestReviewStep {
+  id          String            @id @default(cuid())
+  reviewId    String
+  stage       String
+  status      String
+  summary     String
+  evidence    String?
+  startedAt   DateTime          @default(now())
+  completedAt DateTime?
+  review      PullRequestReview @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+
+  @@index([reviewId])
+  @@index([startedAt])
+}
+
+model WorkflowRecovery {
+  id                         String                 @id @default(cuid())
+  recoveryKey                String                 @unique
+  repository                 String
+  workflowName               String?
+  branch                     String?
+  runId                      String?
+  status                     String                 @default("PLANNED")
+  strategy                   String
+  confidenceScore            Int
+  stabilizationProbability   Int
+  probableRootCause          String
+  affectedSystems            String?
+  proposedRemediation        String
+  operationalImpact          String
+  validationSummary          String
+  autoFixEligible            Boolean                @default(false)
+  autoFixExecuted            Boolean                @default(false)
+  recoveryPullRequestUrl     String?
+  linkedIncidentKey          String?
+  startedAt                  DateTime               @default(now())
+  completedAt                DateTime?
+  updatedAt                  DateTime               @updatedAt
+  steps                      WorkflowRecoveryStep[]
+
+  @@index([repository])
+  @@index([status])
+  @@index([startedAt])
+}
+
+model WorkflowRecoveryStep {
+  id          String           @id @default(cuid())
+  recoveryId  String
+  stage       String
+  status      String
+  summary     String
+  evidence    String?
+  startedAt   DateTime         @default(now())
+  completedAt DateTime?
+  recovery    WorkflowRecovery @relation(fields: [recoveryId], references: [id], onDelete: Cascade)
+
+  @@index([recoveryId])
+  @@index([startedAt])
+}
+
+model EngineeringMemory {
+  id              String   @id @default(cuid())
+  memoryKey       String   @unique
+  repository      String
+  memoryType      String
+  subject         String
+  summary         String
+  severity        String
+  confidenceScore Int
+  occurrenceCount Int      @default(1)
+  evidence        String?
+  firstSeenAt     DateTime @default(now())
+  lastSeenAt      DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([repository])
+  @@index([memoryType])
+  @@index([severity])
+  @@index([lastSeenAt])
+}
+
+model ContextMemoryBlock {
+  id              String   @id @default(cuid())
+  blockKey        String   @unique
+  repository      String
+  layer           String
+  sourceType      String
+  sourceId        String?
+  title           String
+  summary         String
+  compressedText  String
+  priorityScore   Int
+  tokenEstimate   Int
+  providerProfile String   @default("standard")
+  metadata        String?
+  firstSeenAt     DateTime @default(now())
+  lastUsedAt      DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([repository])
+  @@index([layer])
+  @@index([priorityScore])
+  @@index([lastUsedAt])
+}
+
+model KnowledgeGraphNode {
+  id          String   @id @default(cuid())
+  nodeKey     String   @unique
+  repository  String
+  nodeType    String
+  label       String
+  summary     String?
+  severity    String?
+  weight      Int      @default(1)
+  metadata    String?
+  firstSeenAt DateTime @default(now())
+  lastSeenAt  DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([repository])
+  @@index([nodeType])
+  @@index([lastSeenAt])
+}
+
+model KnowledgeGraphEdge {
+  id           String   @id @default(cuid())
+  edgeKey      String   @unique
+  repository   String
+  sourceKey    String
+  targetKey    String
+  relationType String
+  weight       Int      @default(1)
+  evidence     String?
+  firstSeenAt  DateTime @default(now())
+  lastSeenAt   DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([repository])
+  @@index([sourceKey])
+  @@index([targetKey])
+  @@index([relationType])
+}
+
+model AgentCoordinationRun {
+  id                  String              @id @default(cuid())
+  runKey              String              @unique
+  repository          String
+  triggerType         String
+  status              String              @default("RUNNING")
+  priority            String              @default("MEDIUM")
+  activeAgent         String?
+  combinedConclusion  String?
+  operationalSummary  String?
+  linkedWorkflow      String?
+  linkedIncidentKey   String?
+  startedAt           DateTime            @default(now())
+  completedAt         DateTime?
+  updatedAt           DateTime            @updatedAt
+  tasks               AgentTask[]
+  findings            AgentFinding[]
+
+  @@index([repository])
+  @@index([status])
+  @@index([startedAt])
+}
+
+model AgentTask {
+  id          String               @id @default(cuid())
+  runId       String
+  agentType   String
+  title       String
+  status      String               @default("PENDING")
+  priority    String               @default("MEDIUM")
+  summary     String
+  context     String?
+  startedAt   DateTime             @default(now())
+  completedAt DateTime?
+  run         AgentCoordinationRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  @@index([runId])
+  @@index([agentType])
+  @@index([status])
+}
+
+model AgentFinding {
+  id          String               @id @default(cuid())
+  runId       String
+  agentType   String
+  findingType String
+  severity    String
+  summary     String
+  evidence    String?
+  confidence  Int
+  createdAt   DateTime             @default(now())
+  run         AgentCoordinationRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  @@index([runId])
+  @@index([agentType])
+  @@index([severity])
+}
+
 model PullRequestAnalysis {
   id         String   @id @default(cuid())
   prNumber   Int
@@ -31,6 +382,8 @@ model User {
   githubAccessToken     String
   avatarUrl             String?
   bobApiKey             String?
+  groqApiKey            String?
+  preferredAiProvider   String                @default("bob")
   githubWebhookSecret   String?
   autoFixEnabled        Boolean               @default(false)
   confidenceThreshold   Int                   @default(80)

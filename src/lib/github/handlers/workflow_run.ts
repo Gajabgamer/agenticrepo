@@ -8,6 +8,10 @@ import { generateEngineeringSummary } from '@/lib/ai/generateEngineeringSummary'
 import { isSafeAutoFix } from '../isSafeAutoFix';
 import { runAutoFixWorkflow } from '../runAutoFixWorkflow';
 import { prisma } from '@/lib/database/prisma';
+import { logActivityEvent } from '@/lib/activity/logActivityEvent';
+import { incidentKey, severityFromScore, upsertIncident } from '@/lib/incidents/incidentManager';
+import { runAutonomousInvestigation } from '@/lib/investigations/investigationEngine';
+import { runWorkflowRecoveryFromWebhook } from '@/lib/recovery/workflowRecoveryEngine';
 import { GitHubWebhookPayload } from '@/types';
 
 export interface CombinedAnalysis {
@@ -79,6 +83,44 @@ export async function handleWorkflowRun(payload: GitHubWebhookPayload): Promise<
     summary: failureAnalysis.summary,
   });
 
+  await logActivityEvent({
+    eventType: 'workflow_failure',
+    repository,
+    severity: failureAnalysis.severityScore >= 70 ? 'danger' : 'warning',
+    status: 'completed',
+    summary: failureAnalysis.summary,
+    details: {
+      branch,
+      runId,
+      severityScore: failureAnalysis.severityScore,
+      conclusion,
+    },
+    relatedWorkflow: workflowName,
+  });
+
+  await runAutonomousInvestigation({
+    repository,
+    branch,
+    triggerType: 'workflow_failure',
+    relatedWorkflow: workflowName,
+  });
+
+  await upsertIncident({
+    incidentKey: incidentKey(['workflow', repository, workflowName, branch, runId]),
+    severity: severityFromScore(failureAnalysis.severityScore),
+    repository,
+    affectedBranch: branch,
+    engineeringSummary: failureAnalysis.summary,
+    status: 'INVESTIGATING',
+    relatedWorkflow: workflowName,
+    historySummary: 'Workflow failure detected and incident opened',
+    historyDetails: {
+      runId,
+      conclusion,
+      severityScore: failureAnalysis.severityScore,
+    },
+  });
+
   // Fetch workflow logs URL
   let logsUrl: string | null = null;
   try {
@@ -142,6 +184,23 @@ export async function handleWorkflowRun(payload: GitHubWebhookPayload): Promise<
           commitSHAs: suspiciousCommits.map(c => c.sha),
         });
 
+        await logActivityEvent({
+          eventType: 'suspicious_commit',
+          repository,
+          severity: suspiciousCommits.length > 0 ? 'warning' : 'info',
+          status: 'completed',
+          summary: `${suspiciousCommits.length} suspicious commit(s) correlated with workflow failure`,
+          details: {
+            branch,
+            commits: suspiciousCommits.map((commit) => ({
+              sha: commit.sha,
+              author: commit.author,
+              matchedFiles: commit.matchedFiles,
+            })),
+          },
+          relatedWorkflow: workflowName,
+        });
+
         // Log details of each suspicious commit
         for (const commit of suspiciousCommits) {
           console.log('Suspicious commit:', {
@@ -175,6 +234,46 @@ export async function handleWorkflowRun(payload: GitHubWebhookPayload): Promise<
     confidenceLevel: regressionRisk.confidenceLevel,
   });
 
+  await logActivityEvent({
+    eventType: 'regression_alert',
+    repository,
+    severity: regressionRisk.confidenceLevel === 'HIGH' ? 'danger' : regressionRisk.confidenceLevel === 'MEDIUM' ? 'warning' : 'info',
+    status: 'completed',
+    summary: `Regression risk ${regressionRisk.regressionRiskScore}/100 (${regressionRisk.confidenceLevel})`,
+    details: {
+      branch,
+      detectedFiles: logAnalysis.files,
+      detectedErrors: logAnalysis.errors.slice(0, 5),
+    },
+    relatedWorkflow: workflowName,
+  });
+
+  await upsertIncident({
+    incidentKey: incidentKey(['regression', repository, workflowName, branch, runId]),
+    severity: severityFromScore(regressionRisk.regressionRiskScore),
+    repository,
+    affectedBranch: branch,
+    affectedFiles: logAnalysis.files,
+    engineeringSummary: `Regression risk ${regressionRisk.regressionRiskScore}/100 (${regressionRisk.confidenceLevel})`,
+    status: 'ANALYZING',
+    relatedWorkflow: workflowName,
+    historySummary: 'Regression risk calculated',
+    historyDetails: {
+      regressionRisk,
+      detectedFiles: logAnalysis.files,
+      suspiciousCommits: suspiciousCommits.map((commit) => commit.sha),
+    },
+  });
+
+  await runWorkflowRecoveryFromWebhook({
+    payload,
+    failureAnalysis,
+    logAnalysis,
+    suspiciousCommits,
+    regressionRisk,
+    executeAutoFix: false,
+  });
+
   // Generate engineering summary
   const engineeringSummaryResult = generateEngineeringSummary({
     workflowAnalysis: failureAnalysis,
@@ -186,6 +285,16 @@ export async function handleWorkflowRun(payload: GitHubWebhookPayload): Promise<
   // Log engineering summary
   console.log('Engineering summary generated:');
   console.log(engineeringSummaryResult.summary);
+
+  await logActivityEvent({
+    eventType: 'ai_analysis',
+    repository,
+    severity: 'success',
+    status: 'completed',
+    summary: 'Engineering summary generated for workflow failure',
+    details: engineeringSummaryResult.summary.slice(0, 1200),
+    relatedWorkflow: workflowName,
+  });
 
   // Create GitHub issue for high regression risk
   if (regressionRisk.regressionRiskScore >= 70) {
@@ -221,6 +330,38 @@ ${suspiciousCommits.length > 0 ? suspiciousCommits.map(c =>
         console.log('Created GitHub issue for high regression risk:', {
           issueNumber: issueResult.issueNumber,
           issueUrl: issueResult.issueUrl,
+        });
+
+        await logActivityEvent({
+          eventType: 'issue_creation',
+          repository,
+          severity: 'warning',
+          status: 'completed',
+          summary: `Created regression issue #${issueResult.issueNumber}`,
+          details: {
+            workflowName,
+            regressionRiskScore: regressionRisk.regressionRiskScore,
+          },
+          relatedWorkflow: workflowName,
+          relatedIssue: issueResult.issueNumber,
+          relatedUrl: issueResult.issueUrl,
+        });
+
+        await upsertIncident({
+          incidentKey: incidentKey(['regression', repository, workflowName, branch, runId]),
+          severity: severityFromScore(regressionRisk.regressionRiskScore),
+          repository,
+          affectedBranch: branch,
+          affectedFiles: logAnalysis.files,
+          engineeringSummary: engineeringSummaryResult.summary,
+          status: 'OPEN',
+          relatedWorkflow: workflowName,
+          relatedIssue: issueResult.issueNumber,
+          relatedUrl: issueResult.issueUrl,
+          historySummary: `GitHub issue #${issueResult.issueNumber} created for regression incident`,
+          historyDetails: {
+            issueUrl: issueResult.issueUrl,
+          },
         });
       }
     } catch (error) {
@@ -259,6 +400,18 @@ ${suspiciousCommits.length > 0 ? suspiciousCommits.map(c =>
             regressionRiskScore: regressionRisk.regressionRiskScore,
           });
 
+          await upsertIncident({
+            incidentKey: incidentKey(['regression', repository, workflowName, branch, runId]),
+            severity: severityFromScore(regressionRisk.regressionRiskScore),
+            repository,
+            affectedBranch: branch,
+            affectedFiles: logAnalysis.files,
+            engineeringSummary: engineeringSummaryResult.summary,
+            status: 'AUTOFIX_RUNNING',
+            relatedWorkflow: workflowName,
+            historySummary: 'Auto-fix workflow started for incident',
+          });
+
           const autoFixResult = await runAutoFixWorkflow({
             repositoryCloneUrl: cloneUrl,
             repositoryOwner: owner,
@@ -277,8 +430,45 @@ ${suspiciousCommits.length > 0 ? suspiciousCommits.map(c =>
               branchName: autoFixResult.branchName,
               pullRequestUrl: autoFixResult.pullRequestUrl,
             });
+            await logActivityEvent({
+              eventType: 'pr_generation',
+              repository,
+              severity: 'success',
+              status: 'completed',
+              summary: `Auto-fix pull request created from ${autoFixResult.branchName}`,
+              details: {
+                branchName: autoFixResult.branchName,
+                pullRequestUrl: autoFixResult.pullRequestUrl,
+              },
+              relatedWorkflow: workflowName,
+              relatedUrl: autoFixResult.pullRequestUrl,
+            });
+            await upsertIncident({
+              incidentKey: incidentKey(['regression', repository, workflowName, branch, runId]),
+              severity: severityFromScore(regressionRisk.regressionRiskScore),
+              repository,
+              affectedBranch: branch,
+              affectedFiles: logAnalysis.files,
+              engineeringSummary: engineeringSummaryResult.summary,
+              status: 'RESOLVED',
+              relatedWorkflow: workflowName,
+              relatedUrl: autoFixResult.pullRequestUrl,
+              historySummary: 'Auto-fix pull request created and incident marked resolved',
+              historyDetails: {
+                branchName: autoFixResult.branchName,
+                pullRequestUrl: autoFixResult.pullRequestUrl,
+              },
+            });
           } else {
             console.error('Auto-fix workflow failed:', autoFixResult.error);
+            await logActivityEvent({
+              eventType: 'autofix_execution',
+              repository,
+              severity: 'danger',
+              status: 'failed',
+              summary: `Auto-fix workflow failed: ${autoFixResult.error}`,
+              relatedWorkflow: workflowName,
+            });
           }
         }
       } catch (error) {
