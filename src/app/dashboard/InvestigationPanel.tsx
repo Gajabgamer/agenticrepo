@@ -130,16 +130,23 @@ export function InvestigationPanel({ initialInvestigations }: { initialInvestiga
               <div className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
                 <ReasoningPanel investigation={investigation} />
                 <div className="grid gap-3">
-                  {investigation.steps.map((step) => (
-                    <div key={step.id} className="agent-soft rounded-2xl p-4">
-                      <div className="flex items-center justify-between gap-3">
-                        <p className="font-semibold">{step.summary}</p>
-                        <span className="text-xs text-signal-green">{step.status}</span>
+                  {investigation.steps.map((step) => {
+                    const statusUpper = step.status.toUpperCase();
+                    return (
+                      <div key={step.id} className="agent-soft rounded-2xl p-4">
+                        <div className="flex items-center justify-between gap-3">
+                          <p className="font-semibold">{step.summary}</p>
+                          <span className={`rounded-full px-2 py-0.5 text-[0.65rem] font-semibold ${
+                            statusUpper === 'COMPLETED' ? 'bg-emerald-400/10 text-emerald-300 border border-emerald-400/20'
+                              : statusUpper === 'RUNNING' || statusUpper === 'STARTED' ? 'bg-sky-400/10 text-sky-300 animate-pulse border border-sky-400/20'
+                              : 'bg-slate-800 text-slate-500'
+                          }`}>{statusUpper}</span>
+                        </div>
+                        <p className="agent-muted mt-1 font-mono text-xs">{step.stage}</p>
+                        {step.evidence ? <pre className="mt-3 max-h-52 overflow-auto whitespace-pre-wrap break-words font-mono text-xs text-slate-400">{formatDetails(step.evidence)}</pre> : null}
                       </div>
-                      <p className="agent-muted mt-1 font-mono text-xs">{step.stage}</p>
-                      {step.evidence ? <pre className="mt-3 max-h-52 overflow-auto whitespace-pre-wrap break-words font-mono text-xs text-slate-400">{formatDetails(step.evidence)}</pre> : null}
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             ) : null}

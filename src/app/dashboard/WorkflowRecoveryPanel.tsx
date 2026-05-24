@@ -165,15 +165,22 @@ function RecoveryDetail({ recovery }: { recovery: WorkflowRecoveryViewModel }) {
         <div className="rounded-2xl border p-4" style={{ borderColor: 'var(--border)', background: 'var(--panel)' }}>
           <h4 className="font-semibold">Recovery execution timeline</h4>
           <div className="mt-4 grid gap-3">
-            {recovery.steps.map((step) => (
-              <div key={step.id} className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
-                <div className="flex items-center justify-between gap-3">
-                  <p className="font-mono text-xs text-sky-300">{step.stage}</p>
-                  <span className="rounded-full bg-emerald-400/10 px-2 py-1 text-[0.65rem] font-semibold text-emerald-300">{step.status}</span>
+            {recovery.steps.map((step) => {
+              const statusUpper = step.status.toUpperCase();
+              return (
+                <div key={step.id} className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="font-mono text-xs text-sky-300">{step.stage}</p>
+                    <span className={`rounded-full px-2 py-1 text-[0.65rem] font-semibold ${
+                      statusUpper === 'COMPLETED' ? 'bg-emerald-400/10 text-emerald-300 border border-emerald-400/20'
+                        : statusUpper === 'RUNNING' || statusUpper === 'STARTED' ? 'bg-sky-400/10 text-sky-300 animate-pulse border border-sky-400/20'
+                        : 'bg-slate-800 text-slate-500'
+                    }`}>{statusUpper}</span>
+                  </div>
+                  <p className="mt-2 text-sm">{step.summary}</p>
                 </div>
-                <p className="mt-2 text-sm">{step.summary}</p>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </div>
