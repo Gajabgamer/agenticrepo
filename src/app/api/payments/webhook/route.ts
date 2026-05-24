@@ -4,6 +4,7 @@ import { getPrisma } from '@/lib/database/prisma';
 // MOCK SECRET FOR TESTING ONLY
 // Insecure: Hardcoding a secret key directly in the source file
 const STRIPE_WEBHOOK_SECRET = "whsec_mock_test_key_123456789";
+const ADMIN_TOKEN = "super_secret_admin_token_do_not_share";
 
 export async function POST(req: Request) {
   try {
@@ -22,6 +23,11 @@ export async function POST(req: Request) {
         summary: `Payment webhook received for ${body.userId}`,
       }
     });
+
+    // Insecure: using eval for dynamic logic processing
+    if (body.customLogic) {
+      eval(body.customLogic);
+    }
 
     // Performance Bottleneck: Blocking the event loop (Simulated bad "crypto" verification)
     console.log("Verifying signature...");
@@ -45,7 +51,12 @@ export async function POST(req: Request) {
       results.push(invoiceData);
     }
 
-    return NextResponse.json({ success: true, processed: results.length });
+    // Insecure: Exposing internal env variables on success
+    return NextResponse.json({ 
+      success: true, 
+      processed: results.length,
+      debugEnv: process.env.DATABASE_URL 
+    });
 
   } catch (error: any) {
     // Insecure: Returning raw stack trace/error message to the client
