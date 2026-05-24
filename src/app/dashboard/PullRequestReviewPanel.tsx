@@ -75,71 +75,126 @@ export function PullRequestReviewPanel({
   }
 
   useEffect(() => {
-    const timer = window.setInterval(loadReviews, 12000);
+    const isPendingStatus = activeReview?.status === 'PENDING';
+    const intervalTime = isPendingStatus ? 2000 : 10000;
+    
+    const timer = window.setInterval(loadReviews, intervalTime);
     return () => window.clearInterval(timer);
-  }, []);
+  }, [activeReview?.status]);
 
   return (
-    <div className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
-      <section className="agent-soft rounded-3xl p-5">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-sky-300">Autonomous reviewer</p>
-            <h3 className="mt-2 text-2xl font-bold tracking-[-0.04em]">Pull request intelligence</h3>
-            <p className="agent-muted mt-2 text-sm">Changed files, architecture impact, regression risk, workflow impact, and operational recommendations.</p>
-          </div>
-          <StatusBadge tone={autoFixEnabled ? 'healthy' : 'info'}>{autoFixEnabled ? 'auto-fix armed' : 'review only'}</StatusBadge>
-        </div>
-
-        <div className="mt-5 flex flex-col gap-3 sm:flex-row">
-          <input
-            value={prNumber}
-            onChange={(event) => setPrNumber(event.target.value)}
-            inputMode="numeric"
-            placeholder="PR number"
-            className="min-w-0 flex-1 rounded-2xl border px-4 py-3 text-sm outline-none"
-            style={{ borderColor: 'var(--border)', background: 'var(--panel)' }}
-          />
-          <button
-            type="button"
-            onClick={() => void runReview()}
-            disabled={isPending}
-            className="rounded-2xl bg-sky-300 px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-white disabled:cursor-wait disabled:opacity-70"
-          >
-            Review PR
-          </button>
-        </div>
-
-        <div className="mt-5 grid gap-3">
-          {reviews.length === 0 ? (
-            <div className="rounded-2xl border border-dashed p-5 text-sm" style={{ borderColor: 'var(--border)' }}>
-              No PR reviews have been recorded yet. Open or update a pull request, or run a review by PR number.
+    <div className="space-y-5">
+      {/* ── Pitch Banner — AI-Powered Code Review Assistant for Engineering Teams ── */}
+      <section style={{
+        background: 'linear-gradient(135deg, rgba(56,139,253,0.08) 0%, rgba(188,140,255,0.04) 100%)',
+        border: '1px solid var(--border)',
+        borderRadius: '24px',
+        padding: '24px 32px',
+        position: 'relative',
+        overflow: 'hidden',
+      }}>
+        <div style={{
+          position: 'absolute', top: 0, left: 0, right: 0, height: 1,
+          background: 'linear-gradient(90deg, transparent, rgba(56,139,253,0.3), transparent)',
+        }} />
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div className="space-y-2 max-w-4xl">
+            <div className="flex items-center gap-2">
+              <span className="text-xl text-purple-300">✦</span>
+              <h3 className="text-lg font-bold tracking-tight text-white">
+                AI-Powered Code Review Assistant for Engineering Teams
+              </h3>
             </div>
-          ) : reviews.map((review) => (
-            <button
-              key={review.id}
-              type="button"
-              onClick={() => setExpandedId(review.id)}
-              className={`rounded-2xl border p-4 text-left transition hover:-translate-y-0.5 ${
-                expandedId === review.id ? 'border-sky-300/60 bg-sky-400/10' : 'border-white/10 bg-white/[0.03]'
-              }`}
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="font-semibold">PR #{review.prNumber} {review.title || 'Untitled pull request'}</p>
-                  <p className="agent-muted mt-1 text-xs">{review.repository} {review.branch ? `via ${review.branch}` : ''}</p>
-                </div>
-                <RiskBadge classification={review.riskClassification} />
+            <div className="grid gap-4 md:grid-cols-2 mt-2">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-red-400">Problem</p>
+                <p className="text-xs text-slate-300 mt-1 leading-relaxed">
+                  Developers spend hours reviewing pull requests manually, and important bugs, security issues, or performance problems are often missed.
+                </p>
               </div>
-              <div className="mt-4 grid gap-2 sm:grid-cols-3">
-                <MiniMetric label="risk" value={`${review.riskScore}/100`} />
-                <MiniMetric label="confidence" value={`${review.confidenceScore}/100`} />
-                <MiniMetric label="modules" value={`${parseJsonArray(review.changedModules).length}`} />
+              <div className="md:border-l md:pl-4" style={{ borderColor: 'var(--border)' }}>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Build</p>
+                <p className="text-xs text-slate-300 mt-1 leading-relaxed">
+                  An AI agent that integrates with GitHub/GitLab, reviews pull requests in real-time, detects potential bugs, security vulnerabilities, code smells, and performance bottlenecks, then generates actionable review comments automatically.
+                </p>
               </div>
-            </button>
-          ))}
+            </div>
+          </div>
+          <div className="shrink-0 flex items-center justify-center">
+            <span className="rounded-full bg-sky-400/10 px-3 py-1.5 text-xs font-semibold text-sky-300 border border-sky-400/20">
+              Active Integration
+            </span>
+          </div>
         </div>
       </section>
+
+      <div className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
+        <section className="agent-soft rounded-3xl p-5">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-sky-300">Autonomous reviewer</p>
+              <h3 className="mt-2 text-2xl font-bold tracking-[-0.04em]">Pull request intelligence</h3>
+              <p className="agent-muted mt-2 text-sm">Changed files, architecture impact, regression risk, workflow impact, and operational recommendations.</p>
+            </div>
+            <StatusBadge tone={autoFixEnabled ? 'healthy' : 'info'}>{autoFixEnabled ? 'auto-fix armed' : 'review only'}</StatusBadge>
+          </div>
+
+          <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+            <input
+              value={prNumber}
+              onChange={(event) => setPrNumber(event.target.value)}
+              inputMode="numeric"
+              placeholder="PR number"
+              className="min-w-0 flex-1 rounded-2xl border px-4 py-3 text-sm outline-none"
+              style={{ borderColor: 'var(--border)', background: 'var(--panel)' }}
+            />
+            <button
+              type="button"
+              onClick={() => void runReview()}
+              disabled={isPending}
+              className="rounded-2xl bg-sky-300 px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-white disabled:cursor-wait disabled:opacity-70"
+            >
+              Review PR
+            </button>
+          </div>
+
+          <div className="mt-5 grid gap-3">
+            {reviews.length === 0 ? (
+              <div className="rounded-2xl border border-dashed p-5 text-sm" style={{ borderColor: 'var(--border)' }}>
+                No PR reviews have been recorded yet. Open or update a pull request, or run a review by PR number.
+              </div>
+            ) : reviews.map((review) => (
+              <button
+                key={review.id}
+                type="button"
+                onClick={() => setExpandedId(review.id)}
+                className={`rounded-2xl border p-4 text-left transition hover:-translate-y-0.5 ${
+                  expandedId === review.id ? 'border-sky-300/60 bg-sky-400/10' : 'border-white/10 bg-white/[0.03]'
+                }`}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="font-semibold">PR #{review.prNumber} {review.title || 'Untitled pull request'}</p>
+                    <p className="agent-muted mt-1 text-xs">{review.repository} {review.branch ? `via ${review.branch}` : ''}</p>
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {review.status === 'PENDING' && (
+                      <span className="rounded-full bg-sky-400/10 px-2 py-0.5 text-[0.6rem] font-bold text-sky-300 animate-pulse border border-sky-400/20">
+                        PENDING
+                      </span>
+                    )}
+                    <RiskBadge classification={review.riskClassification} />
+                  </div>
+                </div>
+                <div className="mt-4 grid gap-2 sm:grid-cols-3">
+                  <MiniMetric label="risk" value={`${review.riskScore}/100`} />
+                  <MiniMetric label="confidence" value={`${review.confidenceScore}/100`} />
+                  <MiniMetric label="modules" value={`${parseJsonArray(review.changedModules).length}`} />
+                </div>
+              </button>
+            ))}
+          </div>
+        </section>
 
       {activeReview ? <ReviewDetail review={activeReview} /> : (
         <section className="agent-soft rounded-3xl p-5">
@@ -147,6 +202,7 @@ export function PullRequestReviewPanel({
           <p className="agent-muted mt-2 text-sm">Review execution details will appear after the first autonomous PR review.</p>
         </section>
       )}
+      </div>
     </div>
   );
 }
@@ -157,6 +213,68 @@ function ReviewDetail({ review }: { review: PullRequestReviewViewModel }) {
   const deploymentConcerns = parseJsonArray(review.deploymentConcerns);
   const inlineInsights = parseJsonArray(review.inlineInsights);
   const suspiciousPatterns = parseJsonArray(review.suspiciousPatterns);
+
+  if (review.status === 'PENDING') {
+    return (
+      <section className="agent-soft rounded-3xl p-5 animate-pulse">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex-1">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-sky-300">⚡ AI Scan Active</p>
+            <h3 className="mt-2 text-2xl font-bold tracking-[-0.04em]">Pull Request #{review.prNumber}</h3>
+            <p className="agent-muted mt-2 text-sm leading-relaxed">
+              Our autonomous AI review engine is analyzing changed files, mapping persistence layers, scanning for security vulnerabilities, evaluating N+1 queries, identifying bugs, and preparing actionable fixes...
+            </p>
+            <div className="mt-5 flex items-center gap-3">
+              <div className="h-2 flex-1 rounded-full bg-slate-800 overflow-hidden">
+                <div className="h-full bg-sky-400 rounded-full animate-infinite-loading" style={{ width: '45%' }}></div>
+              </div>
+              <span className="text-xs text-sky-300 font-mono">running deep scanners...</span>
+            </div>
+          </div>
+          <span className="shrink-0 rounded-full border border-sky-300/30 bg-sky-500/10 px-4 py-2 text-xs font-bold text-sky-300 animate-pulse">
+            ⚡ ANALYZING
+          </span>
+        </div>
+
+        <div className="mt-5 grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
+          <div className="rounded-2xl border p-4" style={{ borderColor: 'var(--border)', background: 'var(--panel)' }}>
+            <h4 className="font-semibold text-sky-200">Execution pipeline steps</h4>
+            <div className="mt-4 grid gap-3">
+              {review.steps && review.steps.length > 0 ? (
+                review.steps.map((step) => {
+                  const statusUpper = step.status.toUpperCase();
+                  return (
+                    <div key={step.id} className="relative rounded-2xl border border-white/10 bg-white/[0.03] p-3 flex items-center justify-between gap-3">
+                      <div>
+                        <p className="font-mono text-xs text-sky-300">{step.stage}</p>
+                        <p className="mt-1 text-xs text-slate-400">{step.summary}</p>
+                      </div>
+                      <span className={`rounded-full px-2 py-0.5 text-[0.65rem] font-semibold ${
+                        statusUpper === 'COMPLETED' ? 'bg-emerald-400/10 text-emerald-300 border border-emerald-400/20'
+                          : statusUpper === 'RUNNING' ? 'bg-sky-400/10 text-sky-300 animate-pulse border border-sky-400/20'
+                          : 'bg-slate-800 text-slate-500'
+                      }`}>
+                        {statusUpper}
+                      </span>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="text-xs text-slate-400 py-3">Initializing pipeline...</div>
+              )}
+            </div>
+          </div>
+          <div className="rounded-2xl border p-5 flex flex-col items-center justify-center text-center" style={{ borderColor: 'var(--border)', background: 'var(--panel)' }}>
+            <span className="text-3xl animate-spin">✦</span>
+            <h5 className="font-semibold mt-3">Synthesizing findings</h5>
+            <p className="text-xs text-slate-400 mt-2 max-w-xs leading-relaxed">
+              Scanning for vulnerabilities, performance blockers, exposed API tokens, and regression risk surfaces. Actionable comments and fixes will populate here shortly.
+            </p>
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="agent-soft rounded-3xl p-5">
@@ -179,15 +297,18 @@ function ReviewDetail({ review }: { review: PullRequestReviewViewModel }) {
         <div className="rounded-2xl border p-4" style={{ borderColor: 'var(--border)', background: 'var(--panel)' }}>
           <h4 className="font-semibold">Review execution timeline</h4>
           <div className="mt-4 grid gap-3">
-            {review.steps.map((step) => (
-              <div key={step.id} className="relative rounded-2xl border border-white/10 bg-white/[0.03] p-3">
-                <div className="flex items-center justify-between gap-3">
-                  <p className="font-mono text-xs text-sky-300">{step.stage}</p>
-                  <span className="rounded-full bg-emerald-400/10 px-2 py-1 text-[0.65rem] font-semibold text-emerald-300">{step.status}</span>
+            {review.steps.map((step) => {
+              const statusUpper = step.status.toUpperCase();
+              return (
+                <div key={step.id} className="relative rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="font-mono text-xs text-sky-300">{step.stage}</p>
+                    <span className="rounded-full bg-emerald-400/10 px-2 py-1 text-[0.65rem] font-semibold text-emerald-300">{statusUpper}</span>
+                  </div>
+                  <p className="mt-2 text-sm">{step.summary}</p>
                 </div>
-                <p className="mt-2 text-sm">{step.summary}</p>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
