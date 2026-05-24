@@ -1,136 +1,63 @@
-# AgenticRepo
+# agenticrepo
+AgenticRepo is an autonomous GitHub-native engineering agent that connects to a GitHub repository, listens to engineering signals, builds operational memory, investigates CI/CD failures, and generates safe automated fix pull requests. It provides a suite of APIs for managing repository health, investigating incidents, and automating recovery workflows.
 
+AgenticRepo solves the problem of manual intervention in CI/CD pipelines by providing an autonomous agent that can investigate failures, identify root causes, and generate fixes. It integrates with GitHub webhooks to receive notifications about repository events and uses AI-powered engines to analyze and respond to these events. The system consists of several core modules, including `src/lib`, `src/app`, and `prisma`, which handle tasks such as data persistence, authentication, and webhook event processing.
 
-Autonomous GitHub-native engineering agent for repository intelligence, workflow monitoring, regression investigation, and safe automated fix pull requests.
+The `src/lib` module contains functions like `assembleOptimizedContext` and `runWorkflowRecovery`, which are used to assemble optimized context for engineering tasks and recover from workflow failures. The `src/app` module contains API routes such as `/api/activity`, `/api/incidents`, and `/api/recoveries`, which provide endpoints for retrieving activity events, incident reports, and recovery workflows. The `prisma` module handles data persistence using Prisma ORM and defines models such as `activityEvent`, `incident`, and `workflowRecovery`.
 
-AgenticRepo connects to a GitHub repository, listens to engineering signals, builds operational memory, investigates CI/CD failures, and helps teams understand what changed, why it matters, and what can be safely fixed.
+## Core Features
+* Autonomous investigation of CI/CD failures
+* Automated generation of safe fix pull requests
+* Repository health monitoring and reporting
+* Incident management and tracking
+* Integration with GitHub webhooks and APIs
+* Support for multiple AI providers, including Groq and IBM Bob
 
-
-
-
-
-## What It Does
-
-- Monitors GitHub webhook events for pull requests, workflow runs, and issue comments.
-- Analyzes failed workflows and parses CI/CD failure signals.
-- Correlates suspicious commits with affected files and modules.
-- Tracks incidents, repository health, workflow recovery, and investigation history.
-- Builds lightweight engineering memory and optimized AI context without vector database overhead.
-- Supports IBM Bob and Groq provider configuration.
-- Runs controlled terminal commands for repository operations without exposing raw shell access.
-- Generates deterministic safe fixes only for narrow, reviewable changes.
+## Architecture
+AgenticRepo's architecture consists of several modules that work together to provide its core features. The `src/lib` module handles data persistence, authentication, and webhook event processing, while the `src/app` module contains API routes for managing repository health, investigating incidents, and automating recovery workflows. The `prisma` module defines the data models used by the system, including `activityEvent`, `incident`, and `workflowRecovery`.
 
 ## Tech Stack
+| Technology | Description |
+| --- | --- |
+| Next.js | App Router and Pages Router |
+| TypeScript | Programming language |
+| Prisma ORM | Data persistence layer |
+| Turso / libSQL | Database dependency |
+| Auth.js / NextAuth | Authentication and authorization |
+| Vercel | Deployment platform |
 
-- Next.js App Router
-- TypeScript
-- React
-- Tailwind CSS
-- Prisma ORM
-- Turso/libSQL
-- Auth.js / NextAuth
-- GitHub OAuth and GitHub App webhooks
-- xterm.js for the controlled engineering console
+## Project Structure
+The project is organized into several directories, including `src/lib`, `src/app`, `prisma`, and `scripts`. The `src/lib` directory contains functions and utilities used throughout the system, while the `src/app` directory contains API routes and frontend code. The `prisma` directory defines the data models used by the system, and the `scripts` directory contains scripts for building and deploying the application.
 
-## Core Workflows
+## API Reference
+The following API routes are available:
+* `/api/activity`: Retrieves activity events for the connected repository
+* `/api/incidents`: Retrieves incident reports for the connected repository
+* `/api/recoveries`: Retrieves recovery workflows for the connected repository
+* `/api/context`: Retrieves optimized context for engineering tasks
+* `/api/health/repository`: Retrieves repository health reports
 
-1. Sign in with GitHub.
-2. Connect one repository.
-3. Configure IBM Bob or Groq.
-4. Configure the GitHub webhook secret.
-5. Monitor workflow and pull request activity.
-6. Investigate failures and regressions.
-7. Review operational memory, incident history, and repository health.
-8. Generate safe, reviewable fix pull requests when eligible.
+## Database
+The system uses Prisma ORM to define its data models, including:
+* `activityEvent`
+* `incident`
+* `workflowRecovery`
+* `connectedRepository`
+* `githubEvent`
 
-## Local Setup
+## Environment Variables
+The following environment variables are required:
+* `GROQ_API_KEY`: Groq API key for AI reasoning
+* `BOB_API_KEY`: IBM Bob API key for AI reasoning
+* `GITHUB_WEBHOOK_SECRET`: HMAC secret for validating GitHub webhook payloads
 
-```bash
-npm install
-cp .env.example .env.local
-npm run db:push
-npm run dev
-```
+## Getting Started
+To get started with AgenticRepo, follow these steps:
+1. Clone the repository and install dependencies using `npm install`
+2. Set up environment variables for Groq API key, IBM Bob API key, and GitHub webhook secret
+3. Start the development server using `npm run dev`
+4. Connect to a GitHub repository using the `/api/github/setup` endpoint
+5. Use the API routes to retrieve activity events, incident reports, and recovery workflows
 
-Open `http://localhost:3000`.
-
-## Required Environment Variables
-
-```env
-NEXTAUTH_URL=http://localhost:3000
-NEXTAUTH_SECRET=
-
-GITHUB_CLIENT_ID=
-GITHUB_CLIENT_SECRET=
-GITHUB_APP_ID=
-GITHUB_PRIVATE_KEY=
-GITHUB_WEBHOOK_SECRET=
-GITHUB_TOKEN=
-
-DATABASE_URL=libsql://your-database.turso.io
-TURSO_AUTH_TOKEN=
-
-BOB_API_KEY=
-GROQ_API_KEY=
-NEXT_PUBLIC_APP_URL=http://localhost:3000
-```
-
-Do not commit real secrets. Use `.env.local` locally and Vercel environment variables in production.
-
-## Useful Commands
-
-```bash
-npm run dev
-npm run build
-npm run lint
-npm run test:workflow
-npm run db:migrate:deploy
-```
-
-## Controlled Terminal Commands
-
-The in-app terminal does not execute arbitrary operating system commands. It routes only approved AgenticRepo operations, including:
-
-```text
-analyze-repo
-generate-docs
-scan-regressions
-investigate-failure
-run-autofix
-memory-status
-optimize-context
-show-agents
-coordination-status
-recover-workflow
-repo-map
-review-pr <id>
-```
-
-## Deployment Notes
-
-AgenticRepo is designed for Vercel serverless deployment with Turso/libSQL. API routes that use GitHub, Prisma, or webhook verification run in the Node.js runtime.
-
-Production callback and webhook URLs normally look like:
-
-```text
-https://your-domain.vercel.app/api/auth/callback/github
-https://your-domain.vercel.app/api/github/webhook
-```
-
-## Security Model
-
-- Webhook signatures are verified with the configured GitHub webhook secret.
-- GitHub and AI provider tokens stay server-side.
-- The terminal is command-routed and does not expose raw shell access.
-- Auto-fix behavior is intentionally constrained to deterministic safe edits.
-- Repository actions should produce pull requests for review rather than silent direct changes.
-
-## Project Status
-
-AgenticRepo is an active autonomous engineering platform prototype focused on operational credibility, repository intelligence, and safe automation.
-
-See [ROADMAP.md](./ROADMAP.md) for planned work and [SECURITY.md](./SECURITY.md) for vulnerability reporting.
-
-## License
-
-MIT. See [LICENSE](./LICENSE).
+## Deployment
+AgenticRepo can be deployed to Vercel using the `vercel` command. Make sure to set up environment variables for Groq API key, IBM Bob API key, and GitHub webhook secret before deploying.
